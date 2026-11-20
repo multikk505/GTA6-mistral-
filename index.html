@@ -298,9 +298,11 @@ function fixCarDir(c){
 }
 const cars=[],peds=[];
 function spawnCar(cop,rad){
-  for(let t=0;t<14;t++){
+  for(let t=0;t<20;t++){
     const p=randRoadPoint(player.x,player.z,rad);
-    if(dist(p.x,p.z,player.x,player.z)<Math.max(220,rad-320))continue;
+    const dd=dist(p.x,p.z,player.x,player.z);
+    if(cop){if(dd<380||dd>rad)continue;}
+    else if(dd<230||dd>Math.min(rad,660))continue;
     const c={x:p.x,z:p.z,ang:0,speed:16+rnd()*10,max:20+rnd()*8,
       d:(rnd()<0.5?0:1)+(rnd()<0.5?0:2),isCop:!!cop,hp:cop?46:22,turnCd:0,dead:0,driven:false,
       mesh:makeCarMesh(cop?0x3a6fd8:carCols[(rnd()*carCols.length)|0],cop),shootT:0};
@@ -310,13 +312,14 @@ function spawnCar(cop,rad){
 }
 function spawnPed(){
   for(let t=0;t<40;t++){
-    const p=randSidewalkPoint(player.x,player.z,700);
+    const p=randSidewalkPoint(player.x,player.z,340);
+    if(dist2(p.x,p.z,player.x,player.z)>310*310)continue;
     return{x:p.x,z:p.z,a:rnd()*TAU,mesh:makePedMesh(),spd:1.4+rnd()*1.4,dead:0,deadT:0,panic:0,t:0};
   }
   return null;
 }
 const player={x:WORLD/2+70,z:WORLD/2+70,yaw:0,pitch:-0.05,hp:100,money:250,car:null,fireT:0,inv:3,dead:false,deadT:0};
-for(let i=0;i<32;i++){const c=spawnCar(false,900);if(c)cars.push(c);}
+for(let i=0;i<32;i++){const c=spawnCar(false,660);if(c)cars.push(c);}
 for(let i=0;i<36;i++){const p=spawnPed();if(p)peds.push(p);}
 {
   const p0=randSidewalkPoint(WORLD/2,WORLD/2,300);
@@ -600,8 +603,8 @@ function update(dt){
     const c=cars[i];
     if(c===player.car)continue;
     if(c.dead===2){if(gameT-c.burn>8){scene.remove(c.mesh);cars.splice(i,1);}continue;}
-    if(!c.isCop&&!c.driven&&dist2(c.x,c.z,player.x,player.z)>1100*1100){
-      const nc=spawnCar(false,900);
+    if(!c.isCop&&!c.driven&&dist2(c.x,c.z,player.x,player.z)>820*820){
+      const nc=spawnCar(false,660);
       if(nc){scene.remove(c.mesh);cars[i]=nc;continue;}
     }
     if(c.driven)continue;
@@ -657,7 +660,7 @@ function update(dt){
     }
   }
   let carCount=0;for(const c of cars)if(!c.isCop&&!c.driven&&!c.dead)carCount++;
-  if(carCount<30){const c=spawnCar(false,900);if(c)cars.push(c);}
+  if(carCount<30){const c=spawnCar(false,660);if(c)cars.push(c);}
 
   /* peds */
   for(let i=peds.length-1;i>=0;i--){
