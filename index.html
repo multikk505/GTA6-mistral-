@@ -590,7 +590,7 @@ function update(dt){
   }else{
     const m=Math.hypot(thr,str),ms=Math.min(1,m)||0;
     if(m>0.05){
-      const a=player.yaw+Math.atan2(str,thr);
+      const a=(player.yaw+lookYaw)+Math.atan2(str,thr);
       const sp=9.5*ms;
       const nx=player.x+Math.cos(a)*sp*dt,nz=player.z+Math.sin(a)*sp*dt;
       const r=collideCircle(nx,nz,0.7);
