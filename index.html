@@ -35,6 +35,9 @@
   #intro p{max-width:600px;line-height:1.6;color:#ddd;font-size:14px}
   #intro b{color:#8cf}
   #startBtn{margin-top:22px;padding:14px 44px;font-size:20px;font-weight:800;background:#ffd23c;border:0;border-radius:10px;cursor:pointer;color:#222}
+  #rotate{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000;color:#fff;font-size:20px;font-weight:700;text-align:center;gap:14px}
+  #rotate .ic{font-size:64px;animation:rot 1.6s ease-in-out infinite}
+  @keyframes rot{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
 </style>
 </head>
 <body>
@@ -55,6 +58,7 @@
 <div id="stick"><div id="knob"></div></div>
 <div id="btnFire" class="tbtn">PAL</div>
 <div id="btnEnter" class="tbtn">WYSIĄDŹ</div>
+<div id="rotate"><div class="ic">📱</div>Obróć urządzenie poziomo —<br>gra działa w orientacji landscape</div>
 <div id="intro">
   <h1>GTA MISTRAL CITY 3D</h1>
   <p><b>WASD / strzałki</b> – ruch i jazda &nbsp;•&nbsp; <b>mysz</b> – rozglądanie (klik = złap kursor) &nbsp;•&nbsp; <b>SPACJA / LPM</b> – strzał (auto-aim) &nbsp;•&nbsp; <b>E</b> – wsiądź / wysiądź<br>
@@ -153,7 +157,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9fc7ff);
 scene.fog=new THREE.Fog(0x9fc7ff,220,1200);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.1,2500);
-addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();checkOrient();});
 
 const hemi=new THREE.HemisphereLight(0xcfe5ff,0x4a4438,0.9);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(400,600,200);scene.add(sun);
@@ -308,7 +312,7 @@ function spawnPed(){
   return null;
 }
 const player={x:WORLD/2+70,z:WORLD/2+70,yaw:0,pitch:-0.05,hp:100,money:250,car:null,fireT:0,inv:3,dead:false,deadT:0};
-for(let i=0;i<26;i++){const c=spawnCar(false,900);if(c)cars.push(c);}
+for(let i=0;i<32;i++){const c=spawnCar(false,900);if(c)cars.push(c);}
 for(let i=0;i<36;i++){const p=spawnPed();if(p)peds.push(p);}
 {
   const p0=randSidewalkPoint(WORLD/2,WORLD/2,300);
@@ -372,6 +376,10 @@ addEventListener('mousedown',e=>{if(locked&&e.button===0)touch.fire=true;});
 addEventListener('mouseup',e=>{if(e.button===0)touch.fire=false;});
 
 const isTouch=matchMedia('(pointer:coarse)').matches||('ontouchstart' in window);
+function checkOrient(){
+  document.getElementById('rotate').style.display=(isTouch&&innerHeight>innerWidth*1.02)?'flex':'none';
+}
+checkOrient();
 const touch={active:false,mx:0,my:0,fire:false};
 const stickZ=document.getElementById('stickZone'),stickEl=document.getElementById('stick'),knob=document.getElementById('knob');
 let stickId=null,ox=0,oy=0;
@@ -466,7 +474,7 @@ function toggleCar(){
     player.x=r.x;player.z=r.z;
     c.driven=false;player.car=null;
   }else{
-    let best=null,bd=5*5;
+    let best=null,bd=9*9;
     for(const c of cars){if(c.dead)continue;const d=dist2(player.x,player.z,c.x,c.z);if(d<bd){bd=d;best=c;}}
     if(best){
       if(best.isCop)addHeat(1.1);
@@ -571,10 +579,10 @@ function update(dt){
     const m=Math.hypot(thr,str),ms=Math.min(1,m)||0;
     if(m>0.05){
       const a=player.yaw+Math.atan2(str,thr);
-      const sp=7*ms;
+      const sp=9.5*ms;
       const nx=player.x+Math.cos(a)*sp*dt,nz=player.z+Math.sin(a)*sp*dt;
       const r=collideCircle(nx,nz,0.7);
-      player.x=clamp(r.x,6,WORLD-6);player.z=clamp(r.z,6,WORLD-6);
+      player.x=clamp(r.x,3,WORLD-3);player.z=clamp(r.z,3,WORLD-3);
     }
     damageOnFootByCars();
   }
@@ -643,7 +651,7 @@ function update(dt){
     }
   }
   let carCount=0;for(const c of cars)if(!c.isCop&&!c.driven&&!c.dead)carCount++;
-  if(carCount<24){const c=spawnCar(false,900);if(c)cars.push(c);}
+  if(carCount<30){const c=spawnCar(false,900);if(c)cars.push(c);}
 
   /* peds */
   for(let i=peds.length-1;i>=0;i--){
@@ -920,8 +928,20 @@ document.getElementById('startBtn').addEventListener('click',()=>{
   document.getElementById('intro').style.display='none';
   started=true;
   try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+  if(isTouch){
+    try{
+      const de=document.documentElement;
+      if(de.requestFullscreen){
+        de.requestFullscreen().then(()=>{
+          try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{});}catch(e){}
+        }).catch(()=>{});
+      }
+    }catch(e){}
+  }else{
+    view.requestPointerLock();
+  }
   sfx(440,880,0.2,'sine',0.05);
-  if(!isTouch)view.requestPointerLock();
+  checkOrient();
 });
 </script>
 </body>
