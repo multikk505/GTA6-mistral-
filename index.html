@@ -126,17 +126,18 @@ function collideCircle(x,z,r){
   return{x,z,b:false};
 }
 const isRoad=(x,z)=>x>=0&&z>=0&&x<WORLD&&z<WORLD&&((x%PITCH)<ROAD||(z%PITCH)<ROAD);
-function randRoadPoint(cx,cz,rad){
+function randRoadPoint(cx,cz,rad,min){
+  const mn=(min===undefined)?200:min;
   for(let t=0;t<60;t++){
-    const a=rnd()*TAU,d=200+rnd()*rad;
+    const a=rnd()*TAU,d=mn+rnd()*(rad-mn);
     const x=clamp(cx+Math.cos(a)*d,ROAD,WORLD-ROAD),z=clamp(cz+Math.sin(a)*d,ROAD,WORLD-ROAD);
     if(isRoad(x,z))return{x,z};
   }
   return{x:WORLD/2,z:WORLD/2};
 }
-function randSidewalkPoint(cx,cz,rad){
+function randSidewalkPoint(cx,cz,rad,min){
   for(let t=0;t<80;t++){
-    const p=randRoadPoint(cx,cz,rad);
+    const p=randRoadPoint(cx,cz,rad,min);
     const fx=p.x%PITCH,fz=p.z%PITCH;
     let nx=p.x,nz=p.z;
     if(fx<ROAD&&fz<ROAD){
@@ -281,10 +282,12 @@ function makeCarMesh(col,isCop){
 }
 function makePedMesh(){
   const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,1.15,8),new THREE.MeshLambertMaterial({color:carCols[(rnd()*carCols.length)|0]}));
-  body.position.y=0.62;g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.26,8,7),new THREE.MeshLambertMaterial({color:skinCols[(rnd()*4)|0]}));
-  head.position.y=1.42;g.add(head);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,1.35,10),new THREE.MeshLambertMaterial({color:carCols[(rnd()*carCols.length)|0]}));
+  body.position.y=0.72;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,8),new THREE.MeshLambertMaterial({color:skinCols[(rnd()*4)|0]}));
+  head.position.y=1.65;g.add(head);
+  const legs=new THREE.Mesh(boxGeo,new THREE.MeshLambertMaterial({color:0x2b3138}));
+  legs.scale.set(0.42,0.6,0.3);legs.position.y=0.32;g.add(legs);
   scene.add(g);return g;
 }
 function laneOff(d){return (d===0?ROAD*0.24:0)+(d===2?-ROAD*0.24:0)+(d===1?-ROAD*0.24:0)+(d===3?ROAD*0.24:0);}
@@ -311,16 +314,16 @@ function spawnCar(cop,rad){
   return null;
 }
 function spawnPed(){
-  for(let t=0;t<40;t++){
-    const p=randSidewalkPoint(player.x,player.z,340);
-    if(dist2(p.x,p.z,player.x,player.z)>310*310)continue;
+  for(let t=0;t<60;t++){
+    const p=randSidewalkPoint(player.x,player.z,380,40);
+    if(dist2(p.x,p.z,player.x,player.z)>360*360)continue;
     return{x:p.x,z:p.z,a:rnd()*TAU,mesh:makePedMesh(),spd:1.4+rnd()*1.4,dead:0,deadT:0,panic:0,t:0};
   }
   return null;
 }
 const player={x:WORLD/2+70,z:WORLD/2+70,yaw:0,pitch:-0.05,hp:100,money:250,car:null,fireT:0,inv:3,dead:false,deadT:0};
 for(let i=0;i<32;i++){const c=spawnCar(false,660);if(c)cars.push(c);}
-for(let i=0;i<36;i++){const p=spawnPed();if(p)peds.push(p);}
+for(let i=0;i<56;i++){const p=spawnPed();if(p)peds.push(p);}
 {
   const p0=randSidewalkPoint(WORLD/2,WORLD/2,300);
   player.x=p0.x;player.z=p0.z;
@@ -666,7 +669,7 @@ function update(dt){
   for(let i=peds.length-1;i>=0;i--){
     const p=peds[i];
     if(p.dead){if(gameT-p.deadT>22){scene.remove(p.mesh);peds.splice(i,1);}continue;}
-    if(dist2(p.x,p.z,player.x,player.z)>1000*1000){scene.remove(p.mesh);const np=spawnPed();if(np)peds[i]=np;continue;}
+    if(dist2(p.x,p.z,player.x,player.z)>640*640){scene.remove(p.mesh);const np=spawnPed();if(np)peds[i]=np;continue;}
     p.t-=dt;
     if(p.t<=0){p.a+=(Math.random()<0.5?1:-1)*Math.PI/2;p.t=1+Math.random()*3;}
     if(copsNeeded()>=1&&dist2(p.x,p.z,player.x,player.z)<200*200)p.panic=Math.min(1,p.panic+dt);
@@ -683,8 +686,8 @@ function update(dt){
       if(dist2(c.x,c.z,p.x,p.z)<6){killPed(p);if(c.isCop)c.speed*=0.6;break;}
     }
   }
-  let pedCount=0;for(const p of peds)if(!p.dead)pedCount++;
-  if(pedCount<36){const p=spawnPed();if(p)peds.push(p);}
+  let pedCount=0;for(const p of peds)if(!p.dead)pedCount+=p.dead?0:1;
+  if(pedCount<56){const p=spawnPed();if(p)peds.push(p);}
 
   /* pickups */
   for(let i=pickups.length-1;i>=0;i--){
