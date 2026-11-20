@@ -58,7 +58,7 @@
 <div id="stick"><div id="knob"></div></div>
 <div id="btnFire" class="tbtn">PAL</div>
 <div id="btnEnter" class="tbtn">WYSIĄDŹ</div>
-<div id="rotate"><div class="ic">📱</div>Obróć urządzenie poziomo —<br>gra działa w orientacji landscape</div>
+<div id="rotate"><div class="ic">📱</div>Obróć urządzenie poziomo —<br>gra działa w orientacji landscape<button id="rotOk" style="margin-top:16px;padding:10px 26px;font-size:15px;font-weight:700;background:#ffd23c;border:0;border-radius:8px;color:#222">GRAJ MIMO TO</button></div>
 <div id="intro">
   <h1>GTA MISTRAL CITY 3D</h1>
   <p><b>WASD / strzałki</b> – ruch i jazda &nbsp;•&nbsp; <b>mysz</b> – rozglądanie (klik = złap kursor) &nbsp;•&nbsp; <b>SPACJA / LPM</b> – strzał (auto-aim) &nbsp;•&nbsp; <b>E</b> – wsiądź / wysiądź<br>
@@ -66,11 +66,14 @@
   Zbieraj <b style="color:#7f7">$</b>, wykonuj <b style="color:#ff0">misje kurierskie</b>, uważaj na <b style="color:#faa">policję (5 gwiazdek)</b>!</p>
   <button id="startBtn">GRAJ</button>
 </div>
-<script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
-</script>
-<script type="module">
-import * as THREE from 'three';
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/three@0.150.1/build/three.min.js';document.head.appendChild(s);"></script>
+<script>
+let booted=false;
+function showFatal(m){
+  try{const p=document.querySelector('#intro p');p.style.color='#faa';p.textContent='Błąd wczytywania: '+m+' \u2014 sprawdź internet i odśwież stronę.';}catch(e){}
+}
+function boot(){
+if(booted)return;booted=true;
 
 /* ============================ UTILS ============================ */
 const TAU = Math.PI * 2;
@@ -151,6 +154,7 @@ function randSidewalkPoint(cx,cz,rad){
 
 /* ============================ THREE SETUP ============================ */
 const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('view'),antialias:true});
+renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer.setSize(innerWidth,innerHeight);
 const scene=new THREE.Scene();
@@ -183,7 +187,7 @@ function cityTexture(){
   c.beginPath();
   for(let i=0;i<=BLOCKS;i++){const p=(i*PITCH+ROAD/2)*sc;c.moveTo(p,0);c.lineTo(p,S);c.moveTo(0,p);c.lineTo(S,p);}
   c.stroke();
-  const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.anisotropy=4;
+  const tx=new THREE.CanvasTexture(cv);tx.encoding=THREE.sRGBEncoding;tx.anisotropy=4;
   return tx;
 }
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(WORLD,WORLD),new THREE.MeshLambertMaterial({map:cityTexture()}));
@@ -200,7 +204,7 @@ function windowTexture(base){
     c.fillStyle=lit?'#efe2b0':'rgba(30,34,44,0.85)';
     c.fillRect(wx,wy,9,10);
   }
-  const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;
+  const tx=new THREE.CanvasTexture(cv);tx.encoding=THREE.sRGBEncoding;
   tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
   return tx;
 }
@@ -376,10 +380,12 @@ addEventListener('mousedown',e=>{if(locked&&e.button===0)touch.fire=true;});
 addEventListener('mouseup',e=>{if(e.button===0)touch.fire=false;});
 
 const isTouch=matchMedia('(pointer:coarse)').matches||('ontouchstart' in window);
+let allowPortrait=false;
 function checkOrient(){
-  document.getElementById('rotate').style.display=(isTouch&&innerHeight>innerWidth*1.02)?'flex':'none';
+  document.getElementById('rotate').style.display=(!allowPortrait&&isTouch&&innerHeight>innerWidth*1.02)?'flex':'none';
 }
 checkOrient();
+document.getElementById('rotOk').addEventListener('click',function(){allowPortrait=true;checkOrient();});
 const touch={active:false,mx:0,my:0,fire:false};
 const stickZ=document.getElementById('stickZone'),stickEl=document.getElementById('stick'),knob=document.getElementById('knob');
 let stickId=null,ox=0,oy=0;
@@ -943,6 +949,15 @@ document.getElementById('startBtn').addEventListener('click',()=>{
   sfx(440,880,0.2,'sine',0.05);
   checkOrient();
 });
+}
+function waitThree(n){
+  if(window.THREE){
+    try{boot();}catch(err){showFatal((err&&err.message)||String(err));throw err;}
+  }else if(n>200){showFatal('Nie udało się wczytać silnika 3D (Three.js).');}
+  else{setTimeout(function(){waitThree(n+1);},150);}
+}
+window.addEventListener('error',function(e){if(!booted)showFatal((e&&e.message)||'błąd JS');});
+waitThree(0);
 </script>
 </body>
 </html>
